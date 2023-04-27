@@ -27,7 +27,7 @@ public class uOscClient : MonoBehaviour
     Udp udp_ = new DotNet.Udp();
     Thread thread_ = new DotNet.Thread();
 #endif
-    Queue<object> messages_ = new Queue<object>();
+    Queue<(Message message, Bundle bundle)> messages_ = new();
     object lockObject_ = new object();
 
     public ClientStartEvent onClientStarted = new ClientStartEvent();
@@ -86,25 +86,23 @@ public class uOscClient : MonoBehaviour
         {
             var sw = Stopwatch.StartNew();
 
-            object message;
+            Message message;
+            Bundle bundle;
             lock (lockObject_)
             {
-                message = messages_.Dequeue();
+                (message, bundle) = messages_.Dequeue();
             }
 
             using (var stream = new MemoryStream())
+            using (message)
             {
-                if (message is Message)
+                if (bundle != null)
                 {
-                    ((Message)message).Write(stream);
-                }
-                else if (message is Bundle)
-                {
-                    ((Bundle)message).Write(stream);
+                    bundle.Write(stream);
                 }
                 else
                 {
-                    continue;
+                    message.Write(stream);
                 }
                 udp_.Send(Util.GetBuffer(stream), (int)stream.Position);
             }
@@ -117,11 +115,11 @@ public class uOscClient : MonoBehaviour
         }
     }
 
-    void Add(object data)
+    void Add(Message message, Bundle bundle)
     {
         lock (lockObject_)
         {
-            messages_.Enqueue(data);
+            messages_.Enqueue((message, bundle));
 
             while (messages_.Count > maxQueueSize)
             {
@@ -130,23 +128,19 @@ public class uOscClient : MonoBehaviour
         }
     }
 
-    public void Send(string address, params object[] values)
+    public void Send(string address, params OCSValue[] values)
     {
-        Send(new Message() 
-        {
-            address = address,
-            values = values
-        });
+        Send(new Message(this.address, values));
     }
 
     public void Send(Message message)
     {
-        Add(message);
+        Add(message, null);
     }
 
     public void Send(Bundle bundle)
     {
-        Add(bundle);
+        Add(Message.none, bundle);
     }
 }
 

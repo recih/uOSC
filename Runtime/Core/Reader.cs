@@ -32,11 +32,10 @@ public static class Reader
         return value;
     }
 
-    public static byte[] ParseBlob(byte[] buf, ref int pos)
+    public static OCSValue ParseBlob(byte[] buf, ref int pos)
     {
         var size = ParseInt(buf, ref pos);
-        var value = new byte[size];
-        Buffer.BlockCopy(buf, pos, value, 0, size);
+        ReadOnlySpan<byte> value = buf.AsSpan(pos, size);
         pos += Util.GetBufferAlignedSize(size);
         return value;
     }

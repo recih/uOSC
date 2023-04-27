@@ -88,7 +88,7 @@ public class uOscServer : MonoBehaviour
     {
         while (parser_.messageCount > 0)
         {
-            var message = parser_.Dequeue();
+            using var message = parser_.Dequeue();
             onDataReceived.Invoke(message);
 #if UNITY_EDITOR
             _onDataReceivedEditor.Invoke(message);
