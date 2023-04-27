@@ -7,7 +7,7 @@ namespace uOSC
 public class Bundle
 {
     private Timestamp timestamp;
-    private List<object> elements_ = new List<object>();
+    private List<(Message message, Bundle bundle)> elements_ = new();
 
     public Bundle()
     {
@@ -21,12 +21,12 @@ public class Bundle
 
     public void Add(Message message)
     {
-        elements_.Add(message);
+        elements_.Add((message, null));
     }
 
     public void Add(Bundle bundle)
     {
-        elements_.Add(bundle);
+        elements_.Add((Message.none, bundle));
     }
 
     public void Write(MemoryStream stream)
@@ -36,14 +36,14 @@ public class Bundle
 
         for (int i = 0; i < elements_.Count; ++i)
         {
-            var elem = elements_[i];
-            if (elem is Message)
+            var (message, bundle) = elements_[i];
+            if (bundle != null)
             {
-                Write(stream, (Message)elem);
+                Write(stream, bundle);
             }
-            else if (elem is Bundle)
+            else
             {
-                Write(stream, (Bundle)elem);
+                Write(stream, message);
             }
         }
     }

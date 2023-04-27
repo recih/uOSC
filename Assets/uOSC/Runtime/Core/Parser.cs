@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Buffers;
+using UnityEngine;
 using System.Collections.Generic;
 
 namespace uOSC
@@ -18,11 +20,36 @@ public static class Identifier
 
 public class Parser
 {
-    public static readonly object[] EmptyObjectArray = new object[0];
-
+    private static readonly ArrayPool<OCSValue> ValueArrayPool = ArrayPool<OCSValue>.Create(512, 1024);
     object lockObject_ = new object();
     Queue<Message> messages_ = new Queue<Message>();
 
+    struct TempValues : IDisposable
+    {
+        private OCSValue[] _values;
+        private int _length;
+
+        public Span<OCSValue> AsSpan =>
+            _values == null ? Span<OCSValue>.Empty : _values.AsSpan(0, _length);
+        
+        public TempValues(int length)
+        {
+            _values = ValueArrayPool.Rent(length);
+            _length = length;
+        }
+        
+        public OCSValue this[int index]
+        {
+            get => _values[index];
+            set => _values[index] = value;
+        }
+
+        public void Dispose()
+        {
+            if (_values != null) ValueArrayPool.Return(_values, true);
+        }
+    }
+    
     public int messageCount
     {
         get { return messages_.Count; }
@@ -38,14 +65,12 @@ public class Parser
         }
         else
         {
-            var values = ParseData(buf, ref pos);
+            using var values = ParseData(buf, ref pos);
             lock (lockObject_)
             {
-                messages_.Enqueue(new Message() 
+                messages_.Enqueue(new Message(first, values.AsSpan) 
                 {
-                    address = first,
                     timestamp = new Timestamp(timestamp),
-                    values = values
                 });
             }
         }
@@ -91,15 +116,15 @@ public class Parser
         }
     }
 
-    object[] ParseData(byte[] buf, ref int pos)
+    TempValues ParseData(byte[] buf, ref int pos)
     {
         // remove ','
         var types = Reader.ParseString(buf, ref pos).Substring(1);
 
         var n = types.Length;
-        if (n == 0) return EmptyObjectArray;
+        if (n == 0) return default;
 
-        var data = new object[n];
+        var data = new TempValues(n);
 
         for (int i = 0; i < n; ++i)
         {
@@ -113,6 +138,7 @@ public class Parser
                 case Identifier.False  : data[i] = false; break;
                 default:
                     // Add more types here if you want to handle them.
+                    data[i] = OCSValue.Invalid;
                     break;
             }
         }
