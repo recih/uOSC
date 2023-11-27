@@ -56,6 +56,17 @@ namespace uOSC
             AddValue(value.w);
             return this;
         }
+        
+        public MessageBuilder AddBlob(byte[] data, int offset, int count)
+        {
+            return AddBlob(data.AsSpan(offset, count));
+        }
+        
+        public MessageBuilder AddBlob(ReadOnlySpan<byte> data)
+        {
+            _buffer.Add(data);
+            return this;
+        }
 
         public void Reset()
         {
