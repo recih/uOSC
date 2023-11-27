@@ -72,6 +72,7 @@ public static class Writer
     public static void Write(MemoryStream stream, ReadOnlySpan<byte> bytes)
     {
         var size = bytes.Length;
+        Write(stream, size);
         stream.Write(bytes);
 
         var offset = Util.GetBufferAlignedSize(size) - size;
