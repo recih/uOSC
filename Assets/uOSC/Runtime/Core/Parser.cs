@@ -20,7 +20,7 @@ public static class Identifier
 
 public class Parser
 {
-    private static readonly ArrayPool<OCSValue> ValueArrayPool = ArrayPool<OCSValue>.Create(512, 1024);
+    private static readonly ArrayPool<OCSValue> ValueArrayPool = Message.ValueArrayPool;
     object lockObject_ = new object();
     Queue<Message> messages_ = new Queue<Message>();
 
